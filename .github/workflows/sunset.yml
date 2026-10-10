@@ -1,0 +1,35 @@
+name: Sunset
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # weekly: retirement dates arrive without any code change
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sunset-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sunset:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # the PR comment
+      security-events: write # the SARIF upload
+      actions: read # the SARIF upload, in private repositories only
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: AppliedBenchmark/sunset@v1
+        with:
+          sarif-file: sunset.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: ${{ !cancelled() && hashFiles('sunset.sarif') != '' }}
+        with:
+          sarif_file: sunset.sarif
